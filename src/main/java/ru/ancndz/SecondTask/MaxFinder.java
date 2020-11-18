@@ -1,39 +1,32 @@
 package ru.ancndz.SecondTask;
 
-import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
+import java.util.concurrent.Callable;
 
-public class MaxFinder<T extends Comparable<T>> {
+public class MaxFinder<T extends Comparable<T>> implements Callable<T> {
 
     private final List<T> list;
-    private final Integer parts;
+    private final int procId;
+    private final int numOfProc;
 
-    public MaxFinder(List<T> list, Integer parts) {
+    public MaxFinder(List<T> list, int procId, int numOfProc) {
         this.list = list;
-        this.parts = parts;
+        this.procId = procId;
+        this.numOfProc = numOfProc;
     }
 
-    public T getMaxItem() throws ExecutionException, InterruptedException {
-        ExecutorService executorService = Executors.newFixedThreadPool(parts);
-        List<Future<T>> smallTempList = new ArrayList<>();
+    @Override
+    public T call() {
         T max = list.get(0);
-
-        for (int i = 0; i < parts; i++) {
-            System.out.println("Starting new task (" + i + ")...");
-            MaxFinderPart<T> task = new MaxFinderPart<>(this.list.subList(i * (list.size() / parts), (i + 1) * (list.size() / parts) - 1));
-            Future<T> future = executorService.submit(task);
-            smallTempList.add(future);
-        }
-
-        for (Future<T> future : smallTempList) {
-            while (!future.isDone());
-            System.out.println("Check new result...");
-            if (future.get().compareTo(max) > 0) {
-                max = future.get();
+        /**
+         * | 0 |  1  |  2  |...
+         * | i | i+1 | i+2 | i+n | i+1+n | i+2+n |...
+         * n - [0, threads]
+         * i - [0, list size]
+         */
+        for (int i = procId; i < list.size(); i += numOfProc) {
+            if (list.get(i).compareTo(max) > 0) {
+                max = list.get(i);
             }
         }
         return max;
